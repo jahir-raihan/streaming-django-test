@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Streaming Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #stream-content {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stream Text Dynamically with WebSockets</h1>
+
+    <!-- Form for entering the prompt -->
+    <form id="prompt-form">
+        <label for="prompt">Enter Prompt:</label>
+        <input type="text" id="prompt" name="prompt" placeholder="Enter your prompt here">
+        <button type="submit">Start Streaming</button>
+    </form>
+
+    <!-- Div to display streamed content -->
+    <div id="stream-content"></div>
+
+    <script>
+        // Generate or retrieve a unique tab ID
+        if (!sessionStorage.getItem("tabId")) {
+            sessionStorage.setItem("tabId", `tab-${Date.now()}`);
+        }
+        const tabId = sessionStorage.getItem("tabId");
+
+        // Open a WebSocket connection using the tab ID
+        const ws = new WebSocket('ws://' + window.location.host + '/ws/stream/' + tabId + '/');
+        const streamContentDiv = document.getElementById('stream-content');
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const line = data.line;
+
+            // Append the streamed line to the div
+            streamContentDiv.innerText += line + '\n';
+            streamContentDiv.scrollTop = streamContentDiv.scrollHeight; // Auto-scroll to the bottom
+        };
+
+        ws.onclose = function() {
+            console.log('WebSocket connection closed');
+        };
+
+        document.getElementById('prompt-form').onsubmit = function(event) {
+            event.preventDefault(); // Prevent the form from submitting normally
+
+            const prompt = document.getElementById('prompt').value;
+
+            // Send the prompt to the WebSocket server
+            ws.send(JSON.stringify({ 'prompt': prompt }));
+        };
+    </script>
+</body>
+</html>

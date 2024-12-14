@@ -14,6 +14,8 @@
             overflow-y: auto;
             font-family: monospace;
             white-space: pre-wrap;
+            background-color: #f9f9f9;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -23,13 +25,13 @@
     <!-- Form for entering the prompt -->
     <form id="prompt-form">
         <label for="prompt">Enter Prompt:</label>
-        <input type="text" id="prompt" name="prompt" placeholder="Enter your prompt here">
+        <input type="text" id="prompt" name="prompt" placeholder="Enter your prompt here" required>
         <button type="submit">Start Streaming</button>
     </form>
 
     <!-- Div to display streamed content -->
     <div id="stream-content"></div>
-
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // Generate or retrieve a unique tab ID
         if (!sessionStorage.getItem("tabId")) {
@@ -41,13 +43,16 @@
         const ws = new WebSocket('ws://' + window.location.host + '/ws/stream/' + tabId + '/');
         const streamContentDiv = document.getElementById('stream-content');
 
+        let isTyping = false; // Flag to ensure only one typing animation at a time
+        const typingQueue = []; // Queue to hold incoming chunks while typing animation is active
+
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
-            const line = data.line;
+            const chunk = data.chunk;
 
-            // Append the streamed line to the div
-            streamContentDiv.innerText += line + '\n';
-            streamContentDiv.scrollTop = streamContentDiv.scrollHeight; // Auto-scroll to the bottom
+            // Add the chunk to the typing queue
+            typingQueue.push(chunk);
+            processTypingQueue();
         };
 
         ws.onclose = function() {
@@ -59,9 +64,41 @@
 
             const prompt = document.getElementById('prompt').value;
 
+            // Clear the current content
+            streamContentDiv.innerHTML += '<br><br>';
+
+            // Reset the queue and flags
+            isTyping = false;
+            typingQueue.length = 0;
+
             // Send the prompt to the WebSocket server
             ws.send(JSON.stringify({ 'prompt': prompt }));
         };
+
+        // Function to process the typing queue
+        function processTypingQueue() {
+            if (isTyping || typingQueue.length === 0) {
+
+                return; // Exit if typing is in progress or queue is empty
+            }
+
+            isTyping = true; // Set typing flag
+            const chunk = typingQueue.shift(); // Get the next chunk from the queue
+
+            // Simulate typing effect by appending one character at a time
+            let i = 0;
+            const typingInterval = setInterval(() => {
+                if (i < chunk.length) {
+                    streamContentDiv.innerHTML += chunk[i];
+                    streamContentDiv.scrollTop = streamContentDiv.scrollHeight; // Auto-scroll to the bottom
+                    i++;
+                } else {
+                    clearInterval(typingInterval); // Stop typing for this chunk
+                    isTyping = false; // Reset typing flag
+                    processTypingQueue(); // Process the next chunk in the queue
+                }
+            }, 5); // Typing speed in milliseconds (adjust for desired speed)
+        }
     </script>
 </body>
 </html>
